@@ -1,0 +1,26 @@
+[
+  {
+    "file": "cet6.txt",
+    "original_filename": "六级.txt",
+    "nonempty_lines": 5321,
+    "sha256": "9948849b2e60fc91c43f072fb882ccabb728f357739ed93272dc025189277a5b"
+  },
+  {
+    "file": "cet4.txt",
+    "original_filename": "四级.txt",
+    "nonempty_lines": 4058,
+    "sha256": "80000d1b40d71dba4c4e2651e18fbe45c9c7f236f4c8ca7105ab5e89eeee57a3"
+  },
+  {
+    "file": "gaokao.txt",
+    "original_filename": "高中（高考）.txt",
+    "nonempty_lines": 3596,
+    "sha256": "f77632e67f6d1e87eb02e2ee8e673abefc0cda2b38c366ba4afa3e881d80aa5a"
+  },
+  {
+    "file": "zhongkao.txt",
+    "original_filename": "中考.txt",
+    "nonempty_lines": 1847,
+    "sha256": "741a0bc39d0c1d91fb6dfa25ec02028d8b2f88daaa2a6cade29083bd8b1bd801"
+  }
+]

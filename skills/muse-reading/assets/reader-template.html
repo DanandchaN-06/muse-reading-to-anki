@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{DOC_TITLE}}</title>
+<style>
+  :root { --sel: #ffe08a; --accent: #b3541e; }
+  body { font-family: Georgia, 'Times New Roman', serif; max-width: 720px; margin: 0 auto; padding: 20px 18px 80px; line-height: 1.9; color: #222; background: #faf8f4; }
+  h1 { font-size: 1.5rem; line-height: 1.4; margin-bottom: 4px; }
+  .meta { color: #888; font-size: .85rem; margin-bottom: 18px; font-family: -apple-system, sans-serif; }
+  .meta a { color: #888; }
+  #toolbar { position: sticky; top: 0; background: #faf8f4; padding: 10px 0; border-bottom: 1px solid #e3ddd2; z-index: 10; font-family: -apple-system, sans-serif; }
+  #toolbar .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button { font-size: .85rem; padding: 7px 12px; border-radius: 8px; border: 1px solid #cfc6b4; background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button:active { transform: scale(.97); }
+  #count { font-size: .85rem; color: #666; margin-left: auto; }
+  #article p { margin: 0 0 1em; font-size: 1.06rem; }
+  #article .w { cursor: pointer; border-radius: 3px; padding: 1px 0; }
+  #article .w.selected { background: var(--sel); }
+  #article .w.vocab { border-bottom: 2px dotted var(--accent); }
+  #article .w.vocab.selected { background: var(--sel); }
+  #tip { position: fixed; max-width: 280px; background: #2b2b2b; color: #fff; border-radius: 10px; padding: 10px 12px; font-size: .85rem; font-family: -apple-system, sans-serif; line-height: 1.6; display: none; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+  #tip .pos { color: #ffd479; font-style: italic; }
+  #tip .zh { font-size: 1rem; margin: 2px 0; }
+  #tip .ex { color: #ccc; font-size: .78rem; }
+  details.howto { font-family: -apple-system, sans-serif; font-size: .85rem; color: #555; margin-top: 26px; background: #fff; border: 1px solid #e3ddd2; border-radius: 10px; padding: 10px 14px; }
+  details.howto summary { cursor: pointer; font-weight: 600; }
+  details.howto ol { margin: 8px 0 4px; padding-left: 20px; }
+  .toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); background: #2b2b2b; color: #fff; padding: 10px 18px; border-radius: 20px; font-size: .85rem; font-family: -apple-system, sans-serif; display: none; z-index: 60; }
+  #exportPanel { display: none; font-family: -apple-system, sans-serif; background: #fff; border: 1px solid #e3ddd2; border-radius: 10px; padding: 12px 14px; margin: 16px 0; }
+  #exportPanel textarea { width: 100%; height: 160px; font-size: .8rem; border: 1px solid #ddd; border-radius: 8px; padding: 8px; box-sizing: border-box; }
+  #exportPanel .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <div class="row">
+    <button class="primary" id="btnExport">导出选中 → Anki (TSV)</button>
+    <button id="btnCopy">复制选中</button>
+    <button id="btnAll">导出全部生词表</button>
+    <button id="btnClear">清除选择</button>
+    <span id="count">已选 0 个词</span>
+  </div>
+</div>
+
+<h1>{{ARTICLE_TITLE}}</h1>
+<div class="meta">{{META_LINE}} · 点击任意单词即可选中/取消</div>
+
+<div id="exportPanel">
+  <div style="font-weight:600;margin-bottom:8px;">导出选词（TSV，交给 AI 补全七字段后制卡）</div>
+  <textarea id="exportText" readonly></textarea>
+  <div class="row">
+    <button id="btnSelectAll">全选并复制</button>
+    <button id="btnDownload">下载 TSV 文件</button>
+    <button id="btnClosePanel">关闭</button>
+  </div>
+  <div style="font-size:.78rem;color:#888;margin-top:6px;">手机上若下载无反应：点「全选并复制」，可手动拷贝文本，再发给 AI 制卡。</div>
+</div>
+
+<div id="article">
+{{PARAGRAPHS}}
+</div>
+
+<details class="howto">
+<summary>如何把选词变成闪卡</summary>
+<ol>
+<li>点「导出选中 → Anki (TSV)」生成 TSV 文本，可下载文件，或点「全选并复制」手动复制</li>
+<li>把三列 TSV（单词 / 释义 / 原文例句）发给 AI，补齐音标、词性、翻译和同源词</li>
+<li>生成七字段卡片后，按字段映射导入 Anki，或通过已授权的连接加入牌组</li>
+</ol>
+</details>
+
+<div id="tip"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const VOCAB = {{VOCAB_JSON}};
+
+const article = document.getElementById('article');
+const tip = document.getElementById('tip');
+const toast = document.getElementById('toast');
+const selected = new Map(); // word(lower) -> {word, sentence}
+
+const normalizeWord = word => word.normalize('NFKC').replace(/’/g, "'").toLowerCase();
+// Preserve the exact token offset, including repeated occurrences in a paragraph.
+article.querySelectorAll('p').forEach(p => {
+  const text = p.textContent;
+  const frag = document.createDocumentFragment();
+  let cursor = 0;
+  for (const m of text.matchAll(/[A-Za-z]+(?:['’-][A-Za-z]+)*/g)) {
+    frag.appendChild(document.createTextNode(text.slice(cursor, m.index)));
+    const s = document.createElement('span');
+    s.className = 'w';
+    s.textContent = m[0];
+    s.dataset.word = normalizeWord(m[0]);
+    s.dataset.offset = String(m.index);
+    if (VOCAB[s.dataset.word]) s.classList.add('vocab');
+    frag.appendChild(s);
+    cursor = m.index + m[0].length;
+  }
+  frag.appendChild(document.createTextNode(text.slice(cursor)));
+  p.replaceChildren(frag);
+});
+
+function sentenceOf(span) {
+  const text = span.closest('p').textContent;
+  const idx = Number(span.dataset.offset);
+  const segments = typeof Intl.Segmenter === 'function'
+    ? [...new Intl.Segmenter('en', { granularity: 'sentence' }).segment(text)]
+    : [...text.matchAll(/[^.!?]+(?:[.!?]+(?=\s|$)|$)/g)].map(m => ({segment: m[0], index: m.index}));
+  const match = segments.find(s => idx >= s.index && idx < s.index + s.segment.length);
+  return (match ? match.segment : text).trim().replace(/\s+/g, ' ');
+}
+
+function showTip(span, x, y) {
+  const v = VOCAB[span.dataset.word];
+  if (!v) { tip.style.display = 'none'; return; }
+  tip.replaceChildren();
+  for (const [cls, value] of [['pos', v.pos + ' ' + span.textContent], ['zh', v.zh], ['ex', sentenceOf(span)]]) {
+    const node = document.createElement('div');
+    node.className = cls;
+    node.textContent = value;
+    tip.appendChild(node);
+  }
+  tip.style.display = 'block';
+  const r = tip.getBoundingClientRect();
+  tip.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
+  tip.style.top = Math.max(8, Math.min(y + 14, window.innerHeight - r.height - 8)) + 'px';
+}
+
+article.addEventListener('click', e => {
+  const s = e.target.closest('.w');
+  tip.style.display = 'none';
+  if (!s) return;
+  const key = s.dataset.word;
+  if (selected.has(key)) {
+    selected.delete(key);
+    article.querySelectorAll('.w[data-word="' + key + '"]').forEach(el => el.classList.remove('selected'));
+  } else {
+    selected.set(key, { word: s.textContent, sentence: sentenceOf(s) });
+    article.querySelectorAll('.w[data-word="' + key + '"]').forEach(el => el.classList.add('selected'));
+    showTip(s, e.clientX, e.clientY);
+  }
+  document.getElementById('count').textContent = '已选 ' + selected.size + ' 个词';
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('#article') && !e.target.closest('#tip')) tip.style.display = 'none';
+});
+
+function toastMsg(msg) {
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 1800);
+}
+
+function buildTSV(entries) {
+  return entries.map(([k, v]) => {
+    const info = VOCAB[k];
+    const zh = info ? info.pos + ' ' + info.zh : '';
+    const ex = v.sentence || (info ? info.ex : '');
+    return [v.word, zh, ex].map(value => String(value || '').replace(/[\t\r\n]+/g, ' ')).join('\t');
+  }).join('\n');
+}
+
+function downloadTSV(name, tsv) {
+  const blob = new Blob(["\ufeff" + tsv], { type: 'text/tab-separated-values;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+const panel = document.getElementById('exportPanel');
+const exportText = document.getElementById('exportText');
+let lastTSV = '', lastName = 'anki-vocab.tsv';
+
+function showExportPanel(name, tsv) {
+  lastTSV = tsv; lastName = name;
+  exportText.value = tsv;
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch (e) {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove(); return ok;
+  } catch (e) { return false; }
+}
+
+document.getElementById('btnExport').addEventListener('click', () => {
+  if (!selected.size) return toastMsg('还没选词，点击文章中的单词即可选中');
+  showExportPanel('{{EXPORT_BASENAME}}.tsv', buildTSV([...selected]));
+  toastMsg('已生成 ' + selected.size + ' 个词，可全选复制或下载');
+});
+document.getElementById('btnAll').addEventListener('click', () => {
+  const all = Object.keys(VOCAB).map(k => [k, { word: k, sentence: '' }]);
+  showExportPanel('{{EXPORT_BASENAME}}-all.tsv', buildTSV(all));
+  toastMsg('已生成全部 ' + all.length + ' 个生词');
+});
+document.getElementById('btnCopy').addEventListener('click', async () => {
+  if (!selected.size) return toastMsg('还没选词，点击文章中的单词即可选中');
+  const ok = await copyText(buildTSV([...selected]));
+  if (ok) { toastMsg('已复制到剪贴板'); }
+  else {
+    showExportPanel('{{EXPORT_BASENAME}}.tsv', buildTSV([...selected]));
+    toastMsg('直接复制被拦截，已为你打开导出面板');
+  }
+});
+document.getElementById('btnSelectAll').addEventListener('click', async () => {
+  exportText.focus(); exportText.select();
+  try { exportText.setSelectionRange(0, exportText.value.length); } catch (e) {}
+  const ok = await copyText(exportText.value);
+  toastMsg(ok ? '已复制，可发给 AI 制卡' : '已全选，请手动点系统「拷贝」');
+});
+document.getElementById('btnDownload').addEventListener('click', () => {
+  downloadTSV(lastName, lastTSV);
+  toastMsg('已尝试下载（手机上若无反应请用全选复制）');
+});
+document.getElementById('btnClosePanel').addEventListener('click', () => { panel.style.display = 'none'; });
+document.getElementById('btnClear').addEventListener('click', () => {
+  selected.clear();
+  article.querySelectorAll('.w.selected').forEach(el => el.classList.remove('selected'));
+  document.getElementById('count').textContent = '已选 0 个词';
+  tip.style.display = 'none';
+  panel.style.display = 'none';
+  exportText.value = '';
+  lastTSV = '';
+});
+</script>
+</body>
+</html>

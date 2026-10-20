@@ -1,0 +1,24 @@
+{
+  "title": "When music opens a door",
+  "source_title": "原创演示短文",
+  "source_url": "",
+  "publication_date": "2026-10-20",
+  "adaptation_note": "仅用于展示点词与原句制卡，不是正式700–900词学习稿",
+  "paragraphs": [
+    "A song can make us curious about an unfamiliar world. We may begin with the sound of a guitar and end up reading about the people who changed an entire musical tradition.",
+    "His worldly outlook shaped the music he made. He listened to people from different backgrounds and found fresh stories in ordinary conversations.",
+    "Curiosity gives us a reason to read another paragraph. A word we meet in a memorable sentence becomes part of a story we want to revisit."
+  ],
+  "vocab": {
+    "worldly": {
+      "pos": "adj.",
+      "zh": "世俗的；老练的",
+      "ex": "His worldly outlook shaped the music he made."
+    },
+    "curiosity": {
+      "pos": "n.",
+      "zh": "好奇心",
+      "ex": "Curiosity gives us a reason to read another paragraph."
+    }
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Muse 兴趣阅读与闪卡"
+  short_description: "从兴趣英文与指定词库生成阅读器、同源词和原文例句闪卡，并按授权同步 Anki"
+  default_prompt: "使用 $muse-reading，按我的兴趣挑选英文文章，用指定词库制作阅读器，并把我选中的词制成 Anki 闪卡。"

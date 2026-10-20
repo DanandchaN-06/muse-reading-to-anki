@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-20",
+  "deck": "阅读单词",
+  "model": "Muse 阅读单词",
+  "cards": [
+    {
+      "Word": "worldly",
+      "Phonetic": "/ˈwɜːldli/",
+      "POS": "adj.",
+      "Definition": "世俗的；老练的",
+      "Example": "His worldly outlook shaped the music he made.",
+      "ExampleCN": "他对世事的看法影响了他的音乐创作。",
+      "Cognates": "worldliness n. 世故；老练",
+      "ExampleOrigin": "original"
+    },
+    {
+      "Word": "curiosity",
+      "Phonetic": "/ˌkjʊəriˈɒsəti/",
+      "POS": "n.",
+      "Definition": "好奇心",
+      "Example": "Curiosity gives us a reason to read another paragraph.",
+      "ExampleCN": "好奇心让我们有理由再读一段。",
+      "Cognates": "curious adj. 好奇的 · curiously adv. 好奇地",
+      "ExampleOrigin": "original"
+    }
+  ]
+}
